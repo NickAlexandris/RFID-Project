@@ -6,6 +6,12 @@
        "DB_Interface".addrTagWrite := 10;
        "DB_Interface".lenDateWrite := 100;
 
+//   COMMENTS
+//Those exact values match the default setup in Siemens’ demo:
+
+//addrTagRead := 10 → starting offset in tag memory.
+
+//lenDataRead := 100 → read block of 100 bytes
     
        "enable_read" := "DB_Interface".presenceRead AND NOT "HMI_WRITE_RFID_BUTTON" ;
        "enable_write":= "DB_Interface".presenceWrite AND "HMI_WRITE_RFID_BUTTON" ;
@@ -22,9 +28,7 @@
             
             
         END_FOR;
-        
-        
-            "enable_user" := 1;
+           "enable_user" := 1;
             "alert" := 0;
    
  END_IF;
@@ -36,8 +40,6 @@
             
             
         END_FOR;
-        
-        
             "enable_user" := 1;
             "alert" := 0;
    
