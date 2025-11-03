@@ -42,8 +42,3 @@ Main Cycle (OB1)
          |
          --> FC_SCENARIO (handles scenario logic)
 
-
-
-   
-         |
-         --> FC_WRITE_READ (handles the actual RFID read/write operation)
