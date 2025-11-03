@@ -1,39 +1,27 @@
+IF "FirstScan" THEN
+    "DB_Interface".executeResetReader := TRUE;
+END_IF;
+IF "DB_Interface".executeResetReader AND "Pulse_1_Minute" THEN
+    "DB_Interface".executeResetReader := 0;
+END_IF;
 
-
-       "DB_Interface".addrTagRead := 10;
-       "DB_Interface".lenDataRead := 100;
+       "DB_Interface".addrTagRead := 0;
+       "DB_Interface".lenDataRead := 375;
        
-       "DB_Interface".addrTagWrite := 10;
-       "DB_Interface".lenDateWrite := 100;
+       "DB_Interface".addrTagWrite := 378;
+       "DB_Interface".lenDateWrite := 375;
 
-//   COMMENTS
-//Those exact values match the default setup in Siemens’ demo:
-
-//addrTagRead := 10 → starting offset in tag memory.
-
-//lenDataRead := 100 → read block of 100 bytes
-    
+       "lock_antena" := "DB_Interface".antennaAnt ;
        "enable_read" := "DB_Interface".presenceRead AND NOT "HMI_WRITE_RFID_BUTTON" ;
        "enable_write":= "DB_Interface".presenceWrite AND "HMI_WRITE_RFID_BUTTON" ;
        
        //ERRORS
        IF "DB_Interface".errorRead OR "DB_Interface".errorWrite OR "DB_Interface".errorAnt AND "Pulse_Clock_1Hz" THEN
            "DB_Interface".executeResetReader := 1;
+           
        END_IF;
-
- IF NOT "enable_user" AND "DB_Interface".presenceRead THEN
         
-        FOR #i := 0 TO 511 DO
-            "DB_Reader_1".stored_read_data[#i] := "DB_Reader_1".readData[#i];
-            
-            
-        END_FOR;
-           "enable_user" := 1;
-            "alert" := 0;
-   
- END_IF;
-
- IF NOT "enable_user" AND "DB_Interface".presenceRead THEN
+    IF NOT "enable_user" AND "DB_Interface".presenceRead THEN
         
         FOR #i := 0 TO 511 DO
             "DB_Reader_1".stored_read_data[#i] := "DB_Reader_1".readData[#i];
@@ -41,11 +29,28 @@
             
         END_FOR;
             "enable_user" := 1;
-            "alert" := 0;
-   
- END_IF;
+        END_IF;
+     IF "DB_Reader_1".stored_rfid_read_data.ID_Username <> "DB_Reader_1".RFID_data_read.ID_Username THEN
+            
+            #Read_Changed := 1;
+        ELSE
+            #Read_Changed := 0;
+        END_IF;
+        "R_TRIG_DB_1"(CLK := #Read_Changed);
+        
+        "IEC_Timer_0_DB".TOF(IN:="R_TRIG_DB_1".Q,
+                             PT:= T#1m,
+                             Q=>"alert");
   
  IF "enable_user"  AND "STOP_HMI_SIM"   AND  "Pulse_Clock_1Hz" THEN
      "enable_user" := 0;
+     "alert" := 0;
  END_IF;
      
+ IF "Pulse_1_Minute" AND "alert" THEN
+     "alert" := 0;
+ END_IF;
+
+
+
+
