@@ -16,3 +16,34 @@ Automatic motor start upon successful identification
 Fault and antenna-off handling
 
 Tested in simulation and real setup
+
+FC_SCENARIO is not a standalone block — it’s part of a Siemens demo architecture for RFID communication.
+It uses a data block (DB_Interface) to exchange parameters such as:
+
+addrTagRead, lenDataRead
+
+addrTagWrite, lenDataWrite
+
+command/status words, and so on.
+
+However, it only becomes functional once:
+
+The RF120C communication channel is initialized (through FC_WRITE_READ or another comms FC).
+
+The DB_Interface is properly structured with correct default values.
+
+The tag is correctly powered and detected by the antenna.
+
+Without that setup, the RFID reader doesn’t respond to commands → the FC won’t execute properly.D
+
+Main Cycle (OB1)
+   |
+   --> )FC_WRITE_READ (handles the actual RFID read/write operation)
+         |
+         --> FC_SCENARIO (handles scenario logic)
+
+
+
+   
+         |
+         --> FC_WRITE_READ (handles the actual RFID read/write operation)
