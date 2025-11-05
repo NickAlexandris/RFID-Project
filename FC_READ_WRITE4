@@ -1,0 +1,64 @@
+
+
+"Read_DB"(EXECUTE:="enable_read",
+          ADDR_TAG:="DB_Interface".addrTagRead,
+          LEN_DATA:="DB_Interface".lenDataRead,
+          DONE=>"DB_Interface".doneRead,
+          BUSY=>"DB_Interface".busyRead,
+          ERROR=>"DB_Interface".errorRead,
+          STATUS=>"DB_Interface".statusRead,
+          PRESENCE=>"DB_Interface".presenceRead,
+          HW_CONNECT:="SIMATIC Ident_1",
+          IDENT_DATA:="DB_Reader_1".readData);
+
+IF "enable_read" THEN
+    
+    "DB_SERIALIZE"."serialize.pos" := 0;
+    
+    "DB_SERIALIZE"."serialize.retVal" := Deserialize
+    (SRC_ARRAY := "DB_Reader_1".readData,
+     DEST_VARIABLE => "DB_Reader_1".RFID_data_read,
+     POS := "DB_SERIALIZE"."serialize.pos");
+    
+    "DB_SERIALIZE"."serialize.retVal":= Deserialize
+    (SRC_ARRAY := "DB_Reader_1".readData,
+     DEST_VARIABLE => "DB_Reader_1".stored_rfid_read_data,
+     POS := "DB_SERIALIZE"."serialize.pos");
+    
+    
+    
+END_IF;
+
+"Write_DB"(EXECUTE:="enable_write",
+           ADDR_TAG:="DB_Interface".addrTagWrite,
+           LEN_DATA:="DB_Interface".lenDataWrite,
+           DONE=>"DB_Interface".doneWrite,
+           BUSY=>"DB_Interface".busyWrite,
+           ERROR=>"DB_Interface".errorWrite,
+           STATUS=>"DB_Interface".statusWrite,
+           PRESENCE=>"DB_Interface".presenceWrite,
+           HW_CONNECT:="SIMATIC Ident_1",
+           IDENT_DATA:="DB_Reader_1".writeData);
+
+IF "enable_write" THEN
+    "DB_SERIALIZE"."serialize.pos" := 0;
+    
+    
+    "DB_SERIALIZE"."serialize.retVal" := Serialize
+    (SRC_VARIABLE :="DB_Reader_1".RFID_data_write,
+     DEST_ARRAY =>"DB_Reader_1".writeData,
+     POS :="DB_SERIALIZE"."serialize.pos");
+    
+END_IF;
+
+
+
+"Reset_Reader_DB"(EXECUTE:="DB_Interface".executeResetReader,
+                  DONE=>"DB_Interface".doneResetReader,
+                  BUSY=>"DB_Interface".busyResetReader,
+                  ERROR=>"DB_Interface".errorResetReader,
+                  STATUS=>"DB_Interface".statusResetReader,
+                  HW_CONNECT:="SIMATIC Ident_1");
+
+
+    
