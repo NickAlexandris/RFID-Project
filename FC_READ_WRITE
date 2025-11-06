@@ -11,7 +11,6 @@
           HW_CONNECT:="SIMATIC Ident_1",
           IDENT_DATA:="DB_Reader_1".readData);
 
-IF "enable_read" THEN
     
     "DB_SERIALIZE"."serialize.pos" := 0;
     
@@ -19,15 +18,10 @@ IF "enable_read" THEN
     (SRC_ARRAY := "DB_Reader_1".readData,
      DEST_VARIABLE => "DB_Reader_1".RFID_data_read,
      POS := "DB_SERIALIZE"."serialize.pos");
-    
-    "DB_SERIALIZE"."serialize.retVal":= Deserialize
-    (SRC_ARRAY := "DB_Reader_1".readData,
-     DEST_VARIABLE => "DB_Reader_1".stored_rfid_read_data,
-     POS := "DB_SERIALIZE"."serialize.pos");
+
     
     
-    
-END_IF;
+
 
 "Write_DB"(EXECUTE:="enable_write",
            ADDR_TAG:="DB_Interface".addrTagWrite,
@@ -40,8 +34,6 @@ END_IF;
            HW_CONNECT:="SIMATIC Ident_1",
            IDENT_DATA:="DB_Reader_1".writeData);
 
-IF "enable_write" THEN
-    "DB_SERIALIZE"."serialize.pos" := 0;
     
     
     "DB_SERIALIZE"."serialize.retVal" := Serialize
@@ -49,7 +41,7 @@ IF "enable_write" THEN
      DEST_ARRAY =>"DB_Reader_1".writeData,
      POS :="DB_SERIALIZE"."serialize.pos");
     
-END_IF;
+
 
 
 
