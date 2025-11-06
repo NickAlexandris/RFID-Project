@@ -5,6 +5,9 @@ The main purpose is to identify users via RFID and start a motor when permission
 Although the concept seems simple, continuous RFID reading caused some unexpected behavior — especially when the antenna was turned off.
 After several simulations and tests, I managed to stabilize the logic and bring the project closer to a real-world implementation.
 
+Additional info 
+Check the space of your RFID CARD is really important the MDS D100 is 111 Bytes!
+
 Main Features
 
 User identification via RFID (RF120C)
