@@ -1,47 +1,30 @@
-# RFID-Project
-This project is based on an RF120C RFID reader and a Siemens S7-1214C DC/DC PLC.
-The main purpose is to identify users via RFID and start a motor when permission is granted.
+RFID Access Control Project
+ Overview
 
-Although the concept seems simple, continuous RFID reading caused some unexpected behavior — especially when the antenna was turned off.
-After several simulations and tests, I managed to stabilize the logic and bring the project closer to a real-world implementation.
+//This project implements an RFID-based access control system using a Siemens S7-1214C DC/DC PLC and an RF120C RFID reader.
+//The primary objective is to identify users via RFID and automatically start a motor when valid access permission is granted.
 
-Additional info:
-Check the space of your RFID CARD is really important the MDS D100 is only  111 Bytes so u have to keep in mind the lenght of the data in the UDT
+ Main Features
+-RFID-based user identification using the Siemens RF120C module
+-Access permission control managed directly by the S7-1214C PLC
+-Automatic motor activation upon successful user authentication
+-Robust logic ensuring stable performance during antenna ON/OFF transitions
+-Validated through both simulation and physical testing
 
-Main Features
+Implementation Notes
 
-User identification via RFID (RF120C)
+//When working with RFID transponders, it is crucial to check the available memory space on your specific card.
+//For example, the MDS D100 offers only 112 bytes of memory, so you must consider the data length used in your UDTs or Data Blocks (DBs).
+//Always refer to the documentation of your specific transponder type to ensure compatibility and reliable operation.
 
-Access permission logic handled by Siemens S7-1200 PLC
+References & Documentation
 
-Automatic motor start upon successful identification
+Transponder Addressing Guide:https://support.industry.siemens.com/cs/mdm/109781633?c=132222750091&dl=es&lc=cs-CZ
+Siemens Support Article: https://cache.industry.siemens.com/dl/files/939/96784939/att_931671/v1/96784939_S7-1200_RF120C_Set13_DOC_v2d0_en.pdf
 
-Fault and antenna-off handling
+Summary
 
-Tested in simulation and real setup
+This RFID project demonstrates a practical and scalable access control solution integrated directly into a Siemens PLC system.
+The design emphasizes stability, modular programming, and real-world reliability, serving as a solid foundation for more advanced industrial automation applications.
 
-FC_SCENARIO is not a standalone block — it’s part of a Siemens demo architecture for RFID communication.
-It uses a data block (DB_Interface) to exchange parameters such as:
-
-addrTagRead, lenDataRead
-
-addrTagWrite, lenDataWrite
-
-command/status words, and so on.
-
-However, it only becomes functional once:
-
-The RF120C communication channel is initialized (through FC_WRITE_READ or another comms FC).
-
-The DB_Interface is properly structured with correct default values.
-
-The tag is correctly powered and detected by the antenna.
-
-Without that setup, the RFID reader doesn’t respond to commands → the FC won’t execute properly.D
-
-Main Cycle (OB1)
-   |
-   --> )FC_WRITE_READ (handles the actual RFID read/write operation)
-         |
-         --> FC_SCENARIO (handles scenario logic)
-
+All control logic is written in Structured Control Language (SCL) for enhanced readability and modularity.
