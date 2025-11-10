@@ -20,6 +20,7 @@ Implementation Notes
 References & Documentation
 
 Transponder Addressing Guide:https://support.industry.siemens.com/cs/mdm/109781633?c=132222750091&dl=es&lc=cs-CZ
+
 Siemens Support Article: https://cache.industry.siemens.com/dl/files/939/96784939/att_931671/v1/96784939_S7-1200_RF120C_Set13_DOC_v2d0_en.pdf
 
 Summary
