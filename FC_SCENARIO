@@ -2,17 +2,19 @@
 #found := FALSE;
 #empty_found := FALSE;
 //ERRORS
-IF "DB_Interface".errorRead OR "DB_Interface".errorWrite OR "DB_Interface".errorAnt AND "Pulse_Clock_1Hz" THEN
+IF ("DB_Interface".errorRead OR "DB_Interface".errorWrite OR "DB_Interface".errorAnt )AND "Pulse_Clock_1Hz" THEN
     "DB_Interface".executeResetReader := 1;
     
 END_IF;
-//NEEDS RESET EVERY FIRST SCANN
+
+//FIRST SCANN RESET
 IF "FirstScan" THEN
     "DB_Interface".executeResetReader := TRUE;
 END_IF;
 IF "DB_Interface".executeResetReader AND "Pulse_1_Minute" THEN
     "DB_Interface".executeResetReader := 0;
 END_IF;
+
 //FACTORY ADRESS
 IF "enable_read" THEN
     "DB_Interface".addrTagRead := 00;
@@ -22,28 +24,39 @@ IF "enable_write" THEN
     "DB_Interface".addrTagWrite := 00;
     "DB_Interface".lenDateWrite := 100;
 END_IF;
+
 //RESET VALUES
 FOR #j := 0 TO #total_users DO
     "DB_Stored_Users".user[#j].User_detected := 0;
     "DB_Stored_Users".user[#j].User_Available := 0;
 END_FOR;
-//BLOCK CONTINIOUS READ/WRITE
-"enable_read" := "DB_Interface".presenceRead AND NOT "HMI_WRITE_RFID_BUTTON";
+
+//READ/WRITE controL
+
+"enable_read" := "DB_Interface".presenceRead AND NOT "HMI_WRITE_RFID_BUTTON" AND NOT "confirmation_read" ;
 "enable_write" := "DB_Interface".presenceWrite AND "HMI_WRITE_RFID_BUTTON";
-IF "HMI_Stop_Button" AND( "DB_RFID".RFID_Current_readData.ID_Serial_number ="DB_Stored_Users".user[#found_flag].ID_Serial_number  ) THEN
-    "Tag_7" := 1;
-ELSE
-    "Tag_7" := 0;
+"enable_read_after_found" :="DB_Interface".presenceRead_Confirm  AND"confirmation_read";
+
+//Access control
+IF "HMI_Stop_Button" THEN
+    IF "DB_Stored_Users".user[#i].ID_Serial_number = "DB_Reader".Confirmation_OUT_found.ID_Serial_number THEN
+        
+        "confirmation_read" := 0;
+    ELSE
+        "stop_permmited" := 0;
+      
+    END_IF;
 END_IF;
 
-IF NOT "Tag_7" THEN
-    
+//while not permmited stop or scada acces
+IF NOT "stop_permmited"  OR "scada_acces" THEN
     FOR #i := 0 TO #total_users DO
         
-        IF "DB_Stored_Users".user[#i].ID_Serial_number = "DB_RFID".RFID_Current_readData.ID_Serial_number THEN
+       IF "DB_Stored_Users".user[#i].ID_Serial_number = "DB_Reader".Current_OUT_Read.ID_Serial_number THEN
             #found := TRUE;
             #found_flag := #i;
             EXIT;
+            
         END_IF;
         
         IF "DB_Stored_Users".user[#i].ID_Serial_number = #help_byte AND NOT #empty_found THEN
@@ -52,18 +65,22 @@ IF NOT "Tag_7" THEN
             EXIT;
         END_IF;
         
-        
     END_FOR;
     //user search on  DB
     IF #found THEN
-        "DB_Stored_Users".user[#i].ID_Serial_number := "DB_RFID".RFID_Current_readData.ID_Serial_number;
-        "DB_Stored_Users".user[#i].User_detected := 1;
-        
-        
-        IF "Com Start" THEN
+        "DB_Stored_Users".user[#found_flag].User_detected := 1;
+    
+        IF "START" THEN
+            "DB_Interface".busyRead := 1;
+            "confirmation_read" := 1;
+            "DB_Interface".busyRead_Confirm := 0;
             "DB_Stored_Users".user[#i].Current_cubes_1 := "DB_Analog".Analog[3].OUT;
             "DB_Stored_Users".user[#i].Current_kW := "DB_Analog".Analog[10].OUT;
             "DB_Stored_Users".user[1].Current_Time_Hour := "DB_Motor".Motor[1].HOURCOUNT_DAY;
+        ELSE
+            "DB_Interface".busyRead := 0;
+            "confirmation_read" := 0;
+            "DB_Interface".busyRead_Confirm := 1;
         END_IF;
         IF "DB_Interface".presenceRead AND NOT "HMI_Stop_Button" THEN
             
@@ -93,7 +110,7 @@ IF NOT "Tag_7" THEN
         //CREATE AUTOMATICALY USER on DB
         
     ELSIF #empty_found THEN
-        "DB_Stored_Users".user[#flag].ID_Serial_number := "DB_RFID".RFID_Current_readData.ID_Serial_number;
+        "DB_Stored_Users".user[#flag].ID_Serial_number := "DB_Reader".Current_OUT_Read.ID_Serial_number;
         "DB_Stored_Users".user[#flag].User_detected := 1;
         
         IF "Com Start" THEN
