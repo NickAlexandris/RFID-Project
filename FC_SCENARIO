@@ -15,6 +15,13 @@ IF "DB_Interface".executeResetReader AND "Pulse_1_Minute" THEN
     "DB_Interface".executeResetReader := 0;
 END_IF;
 
+//alert if user attempts login while on
+"R_TRIG_DB"(CLK := "pulse_alert");
+
+"DB_TOF_ALERT".TOF(IN := "R_TRIG_DB".Q,
+                   PT := T#10S,
+                   Q => "alert");
+
 //FACTORY ADRESS
 IF "enable_read" THEN
     "DB_Interface".addrTagRead := 00;
@@ -36,23 +43,28 @@ END_FOR;
 "enable_read" := "DB_Interface".presenceRead AND NOT "HMI_WRITE_RFID_BUTTON" AND NOT "confirmation_read" ;
 "enable_write" := "DB_Interface".presenceWrite AND "HMI_WRITE_RFID_BUTTON";
 "enable_read_after_found" :="DB_Interface".presenceRead_Confirm  AND"confirmation_read";
-
+"DB_Display_user".user.User_detected := 0;
 //Access control
 IF "HMI_Stop_Button" THEN
     IF "DB_Stored_Users".user[#i].ID_Serial_number = "DB_Reader".Confirmation_OUT_found.ID_Serial_number THEN
-        
+       
         "confirmation_read" := 0;
     ELSE
         "stop_permmited" := 0;
-      
+        
     END_IF;
+    "DB_Display_user".user.User_detected := 0;
 END_IF;
 
+
+
+
+
 //while not permmited stop or scada acces
-IF NOT "stop_permmited"  OR "scada_acces" THEN
+IF NOT "stop_permmited" OR "scada_acces" THEN
     FOR #i := 0 TO #total_users DO
         
-       IF "DB_Stored_Users".user[#i].ID_Serial_number = "DB_Reader".Current_OUT_Read.ID_Serial_number THEN
+        IF "DB_Stored_Users".user[#i].ID_Serial_number = "DB_Reader".Current_OUT_Read.ID_Serial_number THEN
             #found := TRUE;
             #found_flag := #i;
             EXIT;
@@ -66,22 +78,32 @@ IF NOT "stop_permmited"  OR "scada_acces" THEN
         END_IF;
         
     END_FOR;
+END_IF;
     //user search on  DB
     IF #found THEN
         "DB_Stored_Users".user[#found_flag].User_detected := 1;
-    
+        //DB FOR HMI 
+        "DB_Display_user".user := "DB_Stored_Users".user[#i];
         IF "START" THEN
+            //Pulse for alert
+            "pulse_alert" := "DB_Stored_Users".user[#i].ID_Serial_number <> "DB_Reader".Confirmation_OUT_found.ID_Serial_number;
+            
+            "DB_Display_user".user.User_detected := 1;
+            //interlock readers
             "DB_Interface".busyRead := 1;
-            "confirmation_read" := 1;
             "DB_Interface".busyRead_Confirm := 0;
+            //store current
             "DB_Stored_Users".user[#i].Current_cubes_1 := "DB_Analog".Analog[3].OUT;
             "DB_Stored_Users".user[#i].Current_kW := "DB_Analog".Analog[10].OUT;
             "DB_Stored_Users".user[1].Current_Time_Hour := "DB_Motor".Motor[1].HOURCOUNT_DAY;
+            
         ELSE
             "DB_Interface".busyRead := 0;
             "confirmation_read" := 0;
             "DB_Interface".busyRead_Confirm := 1;
         END_IF;
+        
+        //login logout status
         IF "DB_Interface".presenceRead AND NOT "HMI_Stop_Button" THEN
             
             "DB_Stored_Users".user[#i].user_log_in.YEAR := "Year";
@@ -112,12 +134,13 @@ IF NOT "stop_permmited"  OR "scada_acces" THEN
     ELSIF #empty_found THEN
         "DB_Stored_Users".user[#flag].ID_Serial_number := "DB_Reader".Current_OUT_Read.ID_Serial_number;
         "DB_Stored_Users".user[#flag].User_detected := 1;
-        
+        // σε συνεχεια
         IF "Com Start" THEN
             "DB_Stored_Users".user[#flag].Current_cubes_1 := "DB_Analog".Analog[3].OUT;
             "DB_Stored_Users".user[#flag].Current_kW := "DB_Analog".Analog[10].OUT;
             "DB_Stored_Users".user[#flag].Current_Time_Hour := "DB_Motor".Motor[1].HOURCOUNT_DAY;
         END_IF;
+        //log in register
         IF "DB_Interface".presenceRead AND NOT "HMI_Stop_Button" THEN
             
             "DB_Stored_Users".user[#flag].user_log_in.YEAR := "Year";
@@ -154,12 +177,12 @@ IF NOT "stop_permmited"  OR "scada_acces" THEN
         //"DB_Stored_Users".user[#total_users - 1].User_detected := 1;
         
     END_IF;
+  
+    
+
     
     
-    
-    
-    
-END_IF;
+
 
 
 
