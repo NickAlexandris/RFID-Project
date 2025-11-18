@@ -1,6 +1,7 @@
-#total_users := 25;
+
 #found := FALSE;
 #empty_found := FALSE;
+"Total_users_Nr" := 25;
 //ERRORS
 IF ("DB_Interface".errorRead OR "DB_Interface".errorWrite OR "DB_Interface".errorAnt )AND "Pulse_Clock_1Hz" THEN
     "DB_Interface".executeResetReader := 1;
@@ -10,178 +11,171 @@ END_IF;
 //FIRST SCANN RESET
 IF "FirstScan" THEN
     "DB_Interface".executeResetReader := TRUE;
+    "add_min" := 0;
 END_IF;
 IF "DB_Interface".executeResetReader AND "Pulse_1_Minute" THEN
     "DB_Interface".executeResetReader := 0;
 END_IF;
 
-//alert if user attempts login while on
-"R_TRIG_DB"(CLK := "pulse_alert");
 
-"DB_TOF_ALERT".TOF(IN := "R_TRIG_DB".Q,
-                   PT := T#10S,
-                   Q => "alert");
 
 //FACTORY ADRESS
-IF "enable_read" THEN
-    "DB_Interface".addrTagRead := 00;
+IF "enable_read"   THEN
+    "DB_Interface".addrTagRead := 10;
     "DB_Interface".lenDataRead := 100;
 END_IF;
+
+IF "enable_read_after_found" THEN
+    "DB_Interface".addrTagRead_confirm := 10;
+    "DB_Interface".lenDataRead_confirm:= 100;
+END_IF;
+
+
 IF "enable_write" THEN
-    "DB_Interface".addrTagWrite := 00;
+    "DB_Interface".addrTagWrite := 10;
     "DB_Interface".lenDateWrite := 100;
 END_IF;
 
 //RESET VALUES
-FOR #j := 0 TO #total_users DO
+FOR #j := 1 TO "Total_users_Nr" DO
     "DB_Stored_Users".user[#j].User_detected := 0;
     "DB_Stored_Users".user[#j].User_Available := 0;
+  
 END_FOR;
 
 //READ/WRITE controL
 
-"enable_read" := "DB_Interface".presenceRead AND NOT "HMI_WRITE_RFID_BUTTON" AND NOT "confirmation_read" ;
+"enable_read" := "DB_Interface".presenceRead AND NOT "HMI_WRITE_RFID_BUTTON" AND NOT "block_current_read" ;
 "enable_write" := "DB_Interface".presenceWrite AND "HMI_WRITE_RFID_BUTTON";
-"enable_read_after_found" :="DB_Interface".presenceRead_Confirm  AND"confirmation_read";
-"DB_Display_user".user.User_detected := 0;
-//Access control
-IF "HMI_Stop_Button" THEN
-    IF "DB_Stored_Users".user[#i].ID_Serial_number = "DB_Reader".Confirmation_OUT_found.ID_Serial_number THEN
+"enable_read_after_found" :="DB_Interface".presenceRead_Confirm  AND "block_current_read" AND NOT "HMI_WRITE_RFID_BUTTON"  ;
+    
+    "DB_TRIG_DONE"(CLK := "DB_Interface".doneRead);
+    IF "DB_TRIG_DONE".Q THEN
+        "latched_signal" := 1;
+    END_IF;
        
-        "confirmation_read" := 0;
-    ELSE
-        "stop_permmited" := 0;
-        
+    
+    
+    
+    
+    
+    //Access control
+    "HMI_Stop_Button" := "HMI_Stop_Button" AND ("DB_Reader".Current_OUT_Read.ID_Serial_number = "DB_Reader".Confirmation_OUT_found.ID_Serial_number) AND "DB_Interface".presenceRead_Confirm ;
+    IF "HMI_Stop_Button"  THEN
+        "DB_Display".user.User_detected := 0;
+        "latched_signal" := 0;
+        "block_current_read" := 0;
     END_IF;
-    "DB_Display_user".user.User_detected := 0;
-END_IF;
-
-
-
-
-
-//while not permmited stop or scada acces
-IF NOT "stop_permmited" OR "scada_acces" THEN
-    FOR #i := 0 TO #total_users DO
-        
-        IF "DB_Stored_Users".user[#i].ID_Serial_number = "DB_Reader".Current_OUT_Read.ID_Serial_number THEN
-            #found := TRUE;
-            #found_flag := #i;
-            EXIT;
+    
+    IF  "latched_signal" OR "scada_acces" THEN
+    
+            "block_current_read" := 1;
+            REGION search stored with current
+                FOR #i := 1 TO "Total_users_Nr" DO
+                    
+                    IF "DB_Stored_Users".user[#i].ID_Serial_number ="DB_Reader".Current_OUT_Read.ID_Serial_number THEN
+                        #found_flag := #i;
+                        #found := 1;
+                        "DB_Stored_Users".user[#i].User_detected := 1;
+                        "DB_Display".user := "DB_Stored_Users".user[#i];
+                      
+                        EXIT;      
+                    END_IF;
+                    
+                    IF "DB_Stored_Users".user[#i].ID_Serial_number = #help_byte AND NOT #empty_found THEN
+                        
+                        "DB_Stored_Users".user[#i].ID_Serial_number :="DB_Reader".Current_OUT_Read.ID_Serial_number;
+                        
+                        #empty_found := 1;
+                        #flag := #i;
+                    END_IF;
+                    
+                END_FOR;
+               
+            END_REGION
+            REGION ALERT
+                        
+                        //Pulse for alert
+                        "pulse_alert" := "DB_Stored_Users".user[#i].ID_Serial_number <> "DB_Reader".Confirmation_OUT_found.ID_Serial_number;
+                        //alert if user attempts login while on
+                        "R_TRIG_DB"(CLK := "pulse_alert");
+                        
+                        "DB_TOF_ALERT".TOF(IN := "R_TRIG_DB".Q,
+                                           PT := T#30S,
+                                           Q => "alert");
+                    END_REGION
+            REGION LOGIN 
+            IF "START_HMI" AND NOT "HMI_Stop_Button" THEN
+                            
+                "DB_Stored_Users".user[#i].user_log_in.YEAR := "Year";
+                "DB_Stored_Users".user[#i].user_log_in.MONTH := "Month";
+                "DB_Stored_Users".user[#i].user_log_in.DAY := "Day";
+                "DB_Stored_Users".user[#i].user_log_in.WEEKDAY := "Weekday";
+                "DB_Stored_Users".user[#i].user_log_in.HOUR := "Hour";
+                "DB_Stored_Users".user[#i].user_log_in.MINUTE := "Minute";
+                "DB_Stored_Users".user[#i].user_log_in.SECOND := "Second";
+          ELSIF "DB_Interface".presenceRead AND "HMI_Stop_Button" THEN
+                            "DB_Stored_Users".user[#i].User_detected := 0;
+                            "DB_Stored_Users".user[#i].user_log_off.YEAR := "Year";
+                            "DB_Stored_Users".user[#i].user_log_off.MONTH := "Month";
+                            "DB_Stored_Users".user[#i].user_log_off.DAY := "Day";
+                            "DB_Stored_Users".user[#i].user_log_off.WEEKDAY := "Weekday";
+                            "DB_Stored_Users".user[#i].user_log_off.HOUR := "Hour";
+                            "DB_Stored_Users".user[#i].user_log_off.MINUTE := "Minute";
+                            "DB_Stored_Users".user[#i].user_log_off.SECOND := "Second";
+                            
+              END_IF;
+          END_REGION
             
-        END_IF;
-        
-        IF "DB_Stored_Users".user[#i].ID_Serial_number = #help_byte AND NOT #empty_found THEN
-            #empty_found := TRUE;
-            #flag := #i;
-            EXIT;
-        END_IF;
-        
-    END_FOR;
-END_IF;
-    //user search on  DB
-    IF #found THEN
-        "DB_Stored_Users".user[#found_flag].User_detected := 1;
-        //DB FOR HMI 
-        "DB_Display_user".user := "DB_Stored_Users".user[#i];
-        IF "START" THEN
-            //Pulse for alert
-            "pulse_alert" := "DB_Stored_Users".user[#i].ID_Serial_number <> "DB_Reader".Confirmation_OUT_found.ID_Serial_number;
-            
-            "DB_Display_user".user.User_detected := 1;
-            //interlock readers
-            "DB_Interface".busyRead := 1;
-            "DB_Interface".busyRead_Confirm := 0;
-            //store current
-            "DB_Stored_Users".user[#i].Current_cubes_1 := "DB_Analog".Analog[3].OUT;
-            "DB_Stored_Users".user[#i].Current_kW := "DB_Analog".Analog[10].OUT;
-            "DB_Stored_Users".user[1].Current_Time_Hour := "DB_Motor".Motor[1].HOURCOUNT_DAY;
-            
-        ELSE
-            "DB_Interface".busyRead := 0;
-            "confirmation_read" := 0;
-            "DB_Interface".busyRead_Confirm := 1;
-        END_IF;
-        
-        //login logout status
-        IF "DB_Interface".presenceRead AND NOT "HMI_Stop_Button" THEN
-            
-            "DB_Stored_Users".user[#i].user_log_in.YEAR := "Year";
-            "DB_Stored_Users".user[#i].user_log_in.MONTH := "Month";
-            "DB_Stored_Users".user[#i].user_log_in.DAY := "Day";
-            "DB_Stored_Users".user[#i].user_log_in.WEEKDAY := "Weekday";
-            "DB_Stored_Users".user[#i].user_log_in.HOUR := "Hour";
-            "DB_Stored_Users".user[#i].user_log_in.MINUTE := "Minute";
-            "DB_Stored_Users".user[#i].user_log_in.SECOND := "Second";
-            
-        ELSIF "DB_Interface".presenceRead AND "HMI_Stop_Button" THEN
-            "DB_Stored_Users".user[#i].User_detected := 0;
-            "DB_Stored_Users".user[#i].user_log_off.YEAR := "Year";
-            "DB_Stored_Users".user[#i].user_log_off.MONTH := "Month";
-            "DB_Stored_Users".user[#i].user_log_off.DAY := "Day";
-            "DB_Stored_Users".user[#i].user_log_off.WEEKDAY := "Weekday";
-            "DB_Stored_Users".user[#i].user_log_off.HOUR := "Hour";
-            "DB_Stored_Users".user[#i].user_log_off.MINUTE := "Minute";
-            "DB_Stored_Users".user[#i].user_log_off.SECOND := "Second";
-            IF "Hour" = 0 THEN
-                "DB_Stored_Users".user[#i].Day_KW := 0;
-                "DB_Stored_Users".user[#i].Day_cubes := 0;
+         
+          
+            REGION add time and reset button
+                
+                "R_TRIG_DB_TIME"(CLK := "hmi_add_time_simulation");
+                IF "R_TRIG_DB_TIME".Q THEN
+                    "add_min" := "add_min" + 1;
+                ELSIF "HMI_Reset" THEN
+                    "add_min" := 0;
+                END_IF;
+            END_REGION
+            REGION Start HMI
+                IF "START_HMI" AND "add_min" > 0 AND "DB_Display".user.ID_Credits > 0 THEN
+                    IF "Pulse_1_Minute" AND "MOTOR_ON" THEN
+                        
+                        "DB_Stored_Users".user[#i].Current_cubes_1 := "DB_Analog".Analog[3].OUT;
+                        "DB_Stored_Users".user[#i].Current_kW := "DB_Analog".Analog[10].OUT;
+                        "DB_Stored_Users".user[#i].Current_Time_Hour := "DB_Motor".Motor[1].HOURCOUNT_DAY;
+                        
+                        "add_min" := "add_min" - 1;
+                        "DB_Display".user.ID_Credits := "DB_Display".user.ID_Credits - 1;
+                        "DB_Stored_Users".user[#i] := "DB_Display".user;
+                    END_IF;
+                END_IF;
+            END_REGION
+               
+                
+                
+                
             END_IF;
-        END_IF;
-        
-        //CREATE AUTOMATICALY USER on DB
-        
-    ELSIF #empty_found THEN
-        "DB_Stored_Users".user[#flag].ID_Serial_number := "DB_Reader".Current_OUT_Read.ID_Serial_number;
-        "DB_Stored_Users".user[#flag].User_detected := 1;
-        // σε συνεχεια
-        IF "Com Start" THEN
-            "DB_Stored_Users".user[#flag].Current_cubes_1 := "DB_Analog".Analog[3].OUT;
-            "DB_Stored_Users".user[#flag].Current_kW := "DB_Analog".Analog[10].OUT;
-            "DB_Stored_Users".user[#flag].Current_Time_Hour := "DB_Motor".Motor[1].HOURCOUNT_DAY;
-        END_IF;
-        //log in register
-        IF "DB_Interface".presenceRead AND NOT "HMI_Stop_Button" THEN
+     
+                
+                
+          
             
-            "DB_Stored_Users".user[#flag].user_log_in.YEAR := "Year";
-            "DB_Stored_Users".user[#flag].user_log_in.MONTH := "Month";
-            "DB_Stored_Users".user[#flag].user_log_in.DAY := "Day";
-            "DB_Stored_Users".user[#flag].user_log_in.WEEKDAY := "Weekday";
-            "DB_Stored_Users".user[#flag].user_log_in.HOUR := "Hour";
-            "DB_Stored_Users".user[#flag].user_log_in.MINUTE := "Minute";
-            "DB_Stored_Users".user[#flag].user_log_in.SECOND := "Second";
             
-        ELSIF "DB_Interface".presenceRead AND "HMI_Stop_Button" THEN
-            "DB_Stored_Users".user[#flag].User_detected := 0;
-            "DB_Stored_Users".user[#flag].user_log_off.YEAR := "Year";
-            "DB_Stored_Users".user[#flag].user_log_off.MONTH := "Month";
-            "DB_Stored_Users".user[#flag].user_log_off.DAY := "Day";
-            "DB_Stored_Users".user[#flag].user_log_off.WEEKDAY := "Weekday";
-            "DB_Stored_Users".user[#flag].user_log_off.HOUR := "Hour";
-            "DB_Stored_Users".user[#flag].user_log_off.MINUTE := "Minute";
-            "DB_Stored_Users".user[#flag].user_log_off.SECOND := "Second";
-            IF "Hour" = 0 THEN
-                "DB_Stored_Users".user[#flag].Day_KW := 0;
-                "DB_Stored_Users".user[#flag].Day_cubes := 0;
-            END_IF;
-        END_IF;
-        
-        
-        
-        
-        
-        //ADD MORE USERSSS
-        //ELSE
-        // #total_users := #total_users + 1;
-        //"DB_Stored_Users".user[#total_users - 1].ID_Serial_number := "DB_Reader_1".RFID_data_read.ID_Serial_number;
-        //"DB_Stored_Users".user[#total_users - 1].User_detected := 1;
-        
-    END_IF;
-  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+     
     
 
-    
-    
 
 
 
